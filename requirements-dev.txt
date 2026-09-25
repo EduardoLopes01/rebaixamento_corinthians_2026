@@ -1,0 +1,6 @@
+# Ferramentas de desenvolvimento e segurança (não entram no site nem no modelo)
+bandit==1.9.4
+pip-audit==2.10.1
+detect-secrets==1.5.0
+semgrep==1.178.0
+pypdf==6.19.0

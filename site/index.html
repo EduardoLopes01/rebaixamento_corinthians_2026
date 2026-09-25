@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vai cair? A chance do Corinthians ser rebaixado no Brasileirão 2026</title>
+<meta name="description" content="Previsão feita na pausa da Data Fifa: cada jogo restante do Brasileirão 2026 e, somando todos, a chance do Corinthians terminar na zona de rebaixamento. Site independente, de estudo. Não é recomendação de aposta.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="icon" href="img/escudo-corinthians.svg" type="image/svg+xml">
+<link rel="preload" href="vendor/@fontsource/barlow-condensed/barlow-condensed-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/estilo.css">
+<script src="vendor/motion/motion.js" defer></script>
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+<div class="faixa" id="faixa" role="status">Previsão feita na pausa, com dados até a 28ª rodada</div>
+<header class="barra-marca">
+  <div class="largura">
+    <a class="marca" href="#manchete" aria-label="Vai cair? Início">
+      <img src="img/escudo-corinthians.svg" alt="" width="30" height="38">
+      <span>Vai cair?</span>
+    </a>
+    <p class="selo-topo">Brasileirão 2026<br>site independente, de estudo</p>
+  </div>
+</header>
+
+<section class="heroi" id="manchete" aria-labelledby="titulo-heroi">
+  <div class="heroi-foto" id="heroi-foto" aria-hidden="true"></div>
+  <div class="heroi-listras" aria-hidden="true"></div>
+  <div class="largura">
+    <p class="sobretitulo" id="titulo-heroi">Chance do Corinthians ser rebaixado</p>
+    <p class="numero-heroi" aria-live="polite"><span id="numero-queda">—</span></p>
+    <p class="frase-heroi" id="frase-heroi">Carregando as 100 mil temporadas simuladas…</p>
+    <div class="pontos" id="pontos">
+      <canvas id="tela-pontos" role="img" aria-label="Mil pontos, cada um valendo 100 temporadas simuladas."></canvas>
+    </div>
+    <div class="legenda-pontos">
+      <span><i style="background:var(--perde)"></i>Corinthians rebaixado</span>
+      <span><i style="background:#5c5c5c"></i>escapa</span>
+      <span>1.000 pontos · cada um vale 100 das 100 mil temporadas simuladas</span>
+    </div>
+    <p class="chips-rotulo">E se, no próximo jogo…</p>
+    <div class="chips" id="chips" role="group" aria-label="Simular o próximo jogo"></div>
+    <div class="regua" id="regua"></div>
+    <a class="descer" href="#jogos">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Simule os 10 jogos que faltam
+    </a>
+    <noscript><p>Esta página precisa de JavaScript para mostrar a previsão.</p></noscript>
+  </div>
+</section>
+
+<main>
+  <div class="blocos">
+    <section class="card revela" id="faltam"></section>
+    <section class="card revela" id="proximo"></section>
+  </div>
+
+  <section class="card revela" id="posicao">
+    <h2>Onde o Timão termina</h2>
+    <p class="suave pequeno" id="posicao-sub">Chance de cada posição final nas temporadas simuladas. * = posição hoje.</p>
+    <div class="grafico" id="g-posicoes"></div>
+  </section>
+
+  <section class="card revela" id="jogos">
+    <h2>Os 10 jogos que faltam</h2>
+    <div id="jogos-conteudo"></div>
+  </section>
+
+  <section class="card revela" id="briga">
+    <h2>A briga contra a queda</h2>
+    <p class="suave pequeno">Chance de queda de cada time ameaçado.</p>
+    <div class="grafico" id="g-queda"></div>
+  </section>
+
+  <section class="card revela" id="rodada-volta"></section>
+
+  <section class="card revela" id="dados"></section>
+
+  <p class="aviso"><b>Não é recomendação de aposta.</b> São probabilidades estimadas por um modelo estatístico, que pode errar.
+    Site independente, feito para estudo, sem fins comerciais e sem vínculo com o Sport Club Corinthians Paulista, a CBF ou a UFMG. Sem cookies.</p>
+</main>
+
+<footer id="rodape">
+  <p class="marca-rodape"><img src="img/escudo-corinthians.svg" alt="" width="24" height="30"> <b>Vai cair?</b> · Brasileirão 2026</p>
+  <p>Feito por Eduardo Lopes, com o Claude Code: o autor decide e revisa; a IA escreve e executa.</p>
+  <p>Data provided by football-data.org. Outras fontes na seção "Os dados".</p>
+  <p>Inspirado no <a href="https://github.com/mar-antaya/world_cup_predictions" rel="noopener">projeto de previsão da Copa de Mar Antaya</a>.
+    Código e previsão registrada: <a href="https://github.com/EduardoLopes01/rebaixamento_corinthians_2026" rel="noopener">GitHub</a>.</p>
+  <p>O escudo e a marca pertencem ao Sport Club Corinthians Paulista e aparecem só para identificação, num projeto de estudo sem fins comerciais.
+    Foto do topo: mosaico da torcida na Arena Corinthians, de Anderson Bueno Pereira,
+    <a href="https://commons.wikimedia.org/wiki/File:Mosaico_3D_Arena_Corinthians.jpg" rel="noopener">Wikimedia Commons</a>,
+    licença <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.pt-br" rel="noopener">CC BY-SA 4.0</a> (redimensionada).</p>
+</footer>
+</body>
+</html>

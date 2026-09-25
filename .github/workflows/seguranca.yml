@@ -1,0 +1,63 @@
+# Varredura de segurança e testes a cada push, em pull requests e toda segunda-feira.
+# Ações fixadas por SHA (proteção contra ataque à cadeia de fornecedores) e permissão só de leitura.
+name: Segurança e testes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 9 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  seguranca:
+    name: Varredura de segurança
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: "24"
+      - name: Instala as ferramentas
+        run: pip install -r requirements-dev.txt
+      - name: Bandit (código Python)
+        run: bandit -r src tools -q
+      - name: pip-audit (dependências Python)
+        run: pip-audit -r requirements.txt
+      - name: npm audit (dependências do site)
+        run: npm audit --audit-level=low
+      - name: Semgrep (JavaScript, HTML, Python e segredos)
+        run: semgrep scan --metrics=off --error --config p/javascript --config p/xss --config p/secrets --config p/python --config p/security-audit --exclude site/vendor --exclude node_modules .
+      - name: detect-secrets (segredos nos arquivos)
+        run: |
+          git ls-files -z | xargs -0 detect-secrets scan > resultado.json
+          python -c "import json,sys; r=json.load(open('resultado.json'))['results']; print(r or 'nenhum segredo'); sys.exit(1 if r else 0)"
+      - name: Sintaxe do JavaScript do site
+        run: for f in site/js/*.js; do node --check "$f"; done
+
+  testes:
+    name: Testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: "24"
+      - name: Instala as dependências
+        run: pip install -r requirements.txt
+      - name: pytest
+        run: pytest -q

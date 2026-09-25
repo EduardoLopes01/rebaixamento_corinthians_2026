@@ -1,0 +1,35 @@
+# Segredos: nunca versionar
+.env
+.env.*
+!.env.example
+
+# Dados brutos baixados das fontes (não republicar)
+data/raw/*
+!data/raw/.gitkeep
+# Dados processados: contêm a base bruta, ficam só na máquina (o que vai ao ar sai em predictions/ e site/data/)
+data/processed/*
+!data/processed/.gitkeep
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Node (os arquivos usados pelo site são copiados para site/vendor, que é versionado)
+node_modules/
+
+# Claude Code: preferências locais
+.claude/settings.local.json
+
+# Sistema e editores
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# Instruções locais do Claude Code (ficam só na máquina do autor)
+CLAUDE.md

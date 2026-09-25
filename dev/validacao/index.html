@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Validação dos dados</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #fff; --texto: #1c1c1a; --suave: #6b6b66; --borda: #e3e3de;
+    --ok: #1f7a4d; --erro: #b3261e; --aviso: #8a5a00; --z4: #fdecea; --destaque: #fff4cc;
+    --serie: #2a78d6; --serie-2: #eb6834; --perigo: #d03b3b; --neutro: #c3c2b7; --derrota: #e34948;
+    --parcial: #86b6ef; --vazio: #f0efec;
+    --grade: #e1e0d9; --eixo: #c3c2b7; --faixa-z4: rgba(208, 59, 59, .08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514; --card: #1f1f1d; --texto: #ececea; --suave: #a3a39d; --borda: #34342f;
+      --ok: #5cc98f; --erro: #ff8a80; --aviso: #f2c14e; --z4: #3a1f1d; --destaque: #3b3413;
+      --serie: #3987e5; --serie-2: #d95926; --perigo: #d03b3b; --neutro: #6b6a65; --derrota: #e66767;
+      --parcial: #184f95; --vazio: #2c2c2a;
+      --grade: #2c2c2a; --eixo: #383835; --faixa-z4: rgba(208, 59, 59, .14);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--texto);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 0 0 12px; }
+  h3 { font-size: .95rem; margin: 20px 0 8px; color: var(--suave); text-transform: uppercase; letter-spacing: .04em; }
+  .sub { color: var(--suave); margin: 0 0 24px; }
+  .card { background: var(--card); border: 1px solid var(--borda); border-radius: 10px; padding: 16px; }
+  section.card { margin-bottom: 16px; }
+  .status { font-weight: 600; }
+  .ok { color: var(--ok); } .erro { color: var(--erro); } .sem_chave { color: var(--aviso); }
+  .msg { color: var(--suave); font-size: .85rem; margin: 6px 0 0; word-break: break-word; }
+  .tabela { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; font-variant-numeric: tabular-nums; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--borda); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child, th.esq, td.esq { text-align: left; }
+  th { color: var(--suave); font-weight: 600; }
+  tr.z4 td { background: var(--z4); }
+  tr.cor td { background: var(--destaque); font-weight: 700; }
+  .pilulas { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pilula { border: 1px solid var(--borda); border-radius: 999px; padding: 2px 10px; font-size: .85rem; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
+  dt { color: var(--suave); }
+  dd { margin: 0; }
+  .vazio { color: var(--suave); font-style: italic; }
+  details > summary { cursor: pointer; color: var(--suave); font-size: .9rem; margin-top: 8px; }
+  details.bloco > summary { font-size: 1rem; font-weight: 600; color: var(--texto); margin: 0; }
+  details.bloco[open] > summary { margin-bottom: 12px; }
+
+  /* A resposta */
+  .rotulo { color: var(--suave); font-size: .85rem; margin: 0; }
+  .heroi { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 12px; }
+  .numero { font-size: 3.5rem; font-weight: 650; line-height: 1.05; margin: 4px 0; }
+  .numero-medio { font-size: 2rem; font-weight: 650; line-height: 1.1; margin: 4px 0; }
+  .comparacao { font-size: .9rem; color: var(--suave); margin: 4px 0 0; }
+  .grafico { position: relative; }
+  .grafico svg { display: block; width: 100%; height: auto; }
+  .grafico text { font: 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--suave); }
+  .grafico text.forte { fill: var(--texto); font-weight: 600; }
+  .grafico .alvo { fill: transparent; }
+  .dica { position: absolute; z-index: 2; pointer-events: none; background: var(--card); color: var(--texto);
+          border: 1px solid var(--borda); border-radius: 8px; padding: 6px 10px; font-size: .85rem;
+          box-shadow: 0 2px 8px rgba(0,0,0,.12); white-space: nowrap; opacity: 0; transition: opacity .1s; }
+
+  /* barra de três partes: vitória / empate / derrota */
+  .barra3 { display: flex; gap: 2px; height: 22px; transform-origin: left center; }
+  .barra3 span { display: flex; align-items: center; justify-content: center; height: 100%;
+                 font-size: .78rem; font-weight: 600; font-variant-numeric: tabular-nums; overflow: hidden; }
+  .barra3 span:first-child { border-radius: 4px 0 0 4px; }
+  .barra3 span:last-child { border-radius: 0 4px 4px 0; }
+  .barra3.fina { height: 14px; margin: 10px 0 8px; }
+  .legenda3 { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: .85rem; color: var(--suave); }
+  .legenda3 div { display: flex; align-items: center; gap: 6px; }
+  .chave { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+
+  /* jogos restantes */
+  .resumo-jogos { font-size: .95rem; margin: 0 0 12px; }
+  .jogos { list-style: none; margin: 12px 0 0; padding: 0; }
+  .jogo { display: grid; grid-template-columns: 52px 1fr auto; gap: 4px 12px; align-items: center;
+          padding: 10px 0; border-top: 1px solid var(--borda); }
+  .jogo .quando { font-size: .8rem; color: var(--suave); line-height: 1.25; }
+  .jogo .quando b { display: block; color: var(--texto); font-size: .95rem; }
+  .jogo .titulo { font-weight: 600; }
+  .jogo .titulo small { font-weight: 400; color: var(--suave); }
+  .jogo .placar { text-align: right; font-size: .8rem; color: var(--suave); line-height: 1.25; }
+  .jogo .placar b { display: block; color: var(--texto); font-size: 1rem; font-variant-numeric: tabular-nums; }
+  .jogo .barra3 { grid-column: 2 / 4; }
+  .selo { display: inline-block; margin-left: 6px; padding: 0 8px; border: 1px solid var(--borda); border-radius: 999px;
+          font-size: .72rem; font-weight: 500; color: var(--suave); vertical-align: 1px; }
+
+  /* os dados */
+  .numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 8px; }
+  .numeros .valor { font-size: 1.75rem; font-weight: 650; line-height: 1.1; margin: 2px 0; }
+  .mapa { position: relative; display: grid; grid-template-columns: 96px repeat(var(--anos), minmax(0, 1fr)); gap: 2px; align-items: center; }
+  .mapa .nome { font-size: .8rem; color: var(--suave); padding-right: 6px; white-space: nowrap; }
+  .mapa .celula { height: 20px; border-radius: 3px; background: var(--vazio); transform-origin: bottom; }
+  .mapa .celula.parcial { background: var(--parcial); }
+  .mapa .celula.completo { background: var(--serie); }
+  .mapa .ano { font-size: .72rem; color: var(--suave); text-align: center; white-space: nowrap; overflow: visible; }
+  @media (max-width: 560px) {  /* no celular, a tabela fica com P, J, V, SG e a chance de cair */
+    #tabela th:nth-child(n+6):nth-child(-n+9), #tabela td:nth-child(n+6):nth-child(-n+9) { display: none; }
+    #tabela th, #tabela td { padding: 6px 5px; }
+  }
+  @media (max-width: 480px) {
+    .numeros .valor { font-size: 1.25rem; }
+    .numeros .rotulo, .numeros .msg { font-size: .75rem; }
+  }
+  @media (max-width: 480px) { .mapa { grid-template-columns: 76px repeat(var(--anos), minmax(0, 1fr)); gap: 1px; } }
+
+  /* movimento: só na primeira pintura, e nunca para quem pediu menos animação */
+  @keyframes cresceY { from { transform: scaleY(0); } }
+  @keyframes cresceX { from { transform: scaleX(0); } }
+  @keyframes surge { from { opacity: 0; transform: translateY(6px); } }
+  .anima .cresce-y { transform-box: fill-box; transform-origin: bottom; animation: cresceY .6s cubic-bezier(.2,.7,.2,1) both; }
+  .anima .cresce-x { transform-box: fill-box; transform-origin: left; animation: cresceX .7s cubic-bezier(.2,.7,.2,1) both; }
+  .anima .barra3 { animation: cresceX .7s cubic-bezier(.2,.7,.2,1) both; }
+  .anima .celula { animation: cresceY .4s ease-out both; }
+  .anima .jogo { animation: surge .4s ease-out both; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Validação dos dados</h1>
+  <p class="sub" id="sub">Página interna. Não vai para o site publicado.</p>
+  <section class="card anima" id="resposta"><p class="vazio">Carregando a previsão…</p></section>
+  <section class="card anima" id="jogos-cor" hidden></section>
+  <section class="card" id="tabela" hidden></section>
+  <section class="card anima" id="dados" hidden></section>
+  <section class="card" id="rodada-volta" hidden></section>
+</main>
+<script>
+const MENOS_MOVIMENTO = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const esc = (v) => String(v ?? "—").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const sim = (b) => (b ? "✅ sim" : "❌ não");
+const num = (x, casas = 0) => x.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
+const pct = (x, casas = 1) => {
+  if (x >= 0.9995) return ">99,9%";
+  if (x > 0 && x < 0.0005) return "<0,1%";
+  return `${num(100 * x, casas)}%`;
+};
+const dataCurta = (iso) => iso ? new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "sem data";
+const SVG = "http://www.w3.org/2000/svg";
+
+function tabela(colunas, linhas, classeLinha = () => "") {
+  if (!linhas?.length) return '<p class="vazio">Nada a mostrar.</p>';
+  const th = colunas.map(([rotulo, , esq]) => `<th class="${esq ? "esq" : ""}">${esc(rotulo)}</th>`).join("");
+  const tr = linhas.map((l) => `<tr class="${classeLinha(l)}">${colunas.map(([, f, esq]) => `<td class="${esq ? "esq" : ""}">${esc(f(l))}</td>`).join("")}</tr>`).join("");
+  return `<div class="tabela"><table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div>`;
+}
+
+function el(tag, attrs = {}, texto) {
+  const e = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (texto !== undefined) e.textContent = texto;
+  return e;
+}
+
+// barras com ponta arredondada de 4px e base reta
+function barraV(x, y, w, h, r = 4) {
+  r = Math.min(r, h, w / 2);
+  return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+}
+function barraH(x, y, w, h, r = 4) {
+  r = Math.min(r, w, h / 2);
+  return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h - r}Q${x + w},${y + h} ${x + w - r},${y + h}H${x}Z`;
+}
+
+function dica(container) {
+  const d = document.createElement("div");
+  d.className = "dica";
+  container.appendChild(d);
+  return {
+    mostrar(html, evento) {
+      d.innerHTML = html;
+      const caixa = container.getBoundingClientRect();
+      let x = evento.clientX - caixa.left + 12;
+      if (x + d.offsetWidth > caixa.width) x = evento.clientX - caixa.left - d.offsetWidth - 12;
+      d.style.left = `${Math.max(0, x)}px`;
+      d.style.top = `${evento.clientY - caixa.top - d.offsetHeight - 8}px`;
+      d.style.opacity = 1;
+    },
+    esconder() { d.style.opacity = 0; },
+  };
+}
+
+// cor do texto sobre um preenchimento: branco ou tinta, pelo contraste
+function tintaSobre(variavel) {
+  const cor = getComputedStyle(document.documentElement).getPropertyValue(variavel).trim();
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(cor.slice(i, i + 2), 16) / 255)
+    .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return (1.05 / (lum + 0.05)) >= ((lum + 0.05) / 0.05) ? "#fff" : "#0b0b0b";
+}
+
+// barra de três partes com o valor dentro de cada parte (se couber)
+function barra3(partes, classe = "") {
+  return `<div class="barra3 ${classe}" role="img" aria-label="${partes.map((p) => `${p.rotulo} ${pct(p.valor, 0)}`).join(", ")}">${
+    partes.map((p) => `<span style="width:${100 * p.valor}%;background:var(${p.cor});color:${tintaSobre(p.cor)}">${p.valor >= 0.12 ? pct(p.valor, 0) : ""}</span>`).join("")
+  }</div>`;
+}
+
+function legenda(partes) {
+  return `<div class="legenda3">${partes.map((p) => `<div><span class="chave" style="background:var(${p.cor})"></span>${esc(p.rotulo)}</div>`).join("")}</div>`;
+}
+
+function contar(elemento, valor, formatar, ms = 900) {
+  if (MENOS_MOVIMENTO) { elemento.textContent = formatar(valor); return; }
+  const inicio = performance.now();
+  const passo = (agora) => {
+    const t = Math.min(1, (agora - inicio) / ms);
+    elemento.textContent = formatar(valor * (1 - (1 - t) ** 3));
+    if (t < 1) requestAnimationFrame(passo);
+  };
+  requestAnimationFrame(passo);
+}
+
+// ---------- 1. A resposta ----------
+
+function graficoPosicoes(container, dist, chanceQueda, posAtual) {
+  const W = Math.max(300, container.clientWidth), H = 240, m = { t: 28, r: 8, b: 28, l: 36 };
+  const larguraFaixa = (W - m.l - m.r) / dist.length;
+  const larguraBarra = Math.min(24, larguraFaixa - 2);
+  const topo = Math.ceil(Math.max(...dist) * 20) / 20;  // eixo em passos de 5 pontos
+  const y = (v) => m.t + (H - m.t - m.b) * (1 - v / topo);
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
+    "aria-label": `Chance de o Corinthians terminar em cada posição. Zona de queda, 17º a 20º: ${pct(chanceQueda)}.` });
+
+  const xZ4 = m.l + 16 * larguraFaixa;
+  svg.appendChild(el("rect", { x: xZ4, y: m.t - 22, width: 4 * larguraFaixa, height: H - m.b - m.t + 22, fill: "var(--faixa-z4)", rx: 4 }));
+  svg.appendChild(el("text", { x: W - m.r - 4, y: m.t - 8, "text-anchor": "end", class: "forte" }, `Zona de queda: ${pct(chanceQueda)}`));
+
+  for (let v = 0; v <= topo + 1e-9; v += 0.05) {
+    svg.appendChild(el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: v === 0 ? "var(--eixo)" : "var(--grade)", "stroke-width": 1 }));
+    svg.appendChild(el("text", { x: m.l - 6, y: y(v) + 4, "text-anchor": "end" }, `${Math.round(v * 100)}%`));
+  }
+
+  const rotulos = larguraFaixa >= 28 ? dist.map((_, k) => k + 1)
+    : larguraFaixa >= 18 ? [1, 3, 5, 7, 9, 11, 13, 15, 17, 18, 19, 20] : [1, 5, 10, 15, 17, 20];
+  const d = dica(container);
+  dist.forEach((p, i) => {
+    const pos = i + 1;
+    const cx = m.l + i * larguraFaixa + larguraFaixa / 2;
+    if (p > 0) {
+      svg.appendChild(el("path", { d: barraV(cx - larguraBarra / 2, y(p), larguraBarra, y(0) - y(p)),
+        fill: pos >= 17 ? "var(--perigo)" : "var(--serie)", class: "cresce-y", style: `animation-delay:${i * 25}ms` }));
+    }
+    const perto = pos !== posAtual && Math.abs(pos - posAtual) * larguraFaixa < 26;
+    if ((rotulos.includes(pos) && !perto) || pos === posAtual) {
+      svg.appendChild(el("text", { x: cx, y: H - m.b + 16, "text-anchor": "middle", class: pos === posAtual ? "forte" : "" },
+        pos === posAtual ? `${pos}º*` : `${pos}º`));
+    }
+    const alvo = el("rect", { x: cx - larguraFaixa / 2, y: m.t, width: larguraFaixa, height: H - m.t - m.b, class: "alvo" });
+    alvo.addEventListener("mousemove", (e) => d.mostrar(`<b>${pos}º lugar</b>: ${pct(p)}${pos >= 17 ? " · cai" : ""}`, e));
+    alvo.addEventListener("mouseleave", () => d.esconder());
+    svg.appendChild(alvo);
+  });
+  container.prepend(svg);
+}
+
+function graficoQueda(container, times, destaque) {
+  const lista = times.filter((t) => t.chance_queda >= 0.005).sort((a, b) => b.chance_queda - a.chance_queda);
+  const W = Math.max(300, container.clientWidth), linha = 30, m = { t: 8, r: 56, b: 8, l: 124 };
+  const H = m.t + m.b + lista.length * linha;
+  const x = (v) => m.l + (W - m.l - m.r) * v;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Chance de queda dos times ameaçados" });
+  for (const v of [0, 0.25, 0.5, 0.75, 1]) {
+    svg.appendChild(el("line", { x1: x(v), x2: x(v), y1: m.t, y2: H - m.b, stroke: v === 0 ? "var(--eixo)" : "var(--grade)", "stroke-width": 1 }));
+  }
+  const d = dica(container);
+  lista.forEach((t, i) => {
+    const yy = m.t + i * linha;
+    const eh = t.time === destaque;
+    svg.appendChild(el("text", { x: m.l - 8, y: yy + linha / 2 + 4, "text-anchor": "end", class: eh ? "forte" : "" }, `${t.time} (${t.pos_atual}º)`));
+    svg.appendChild(el("path", { d: barraH(x(0), yy + (linha - 16) / 2, Math.max(2, x(t.chance_queda) - x(0)), 16),
+      fill: eh ? "var(--perigo)" : "var(--serie)", class: "cresce-x", style: `animation-delay:${i * 40}ms` }));
+    svg.appendChild(el("text", { x: x(t.chance_queda) + 6, y: yy + linha / 2 + 4, class: eh ? "forte" : "" }, pct(t.chance_queda)));
+    const alvo = el("rect", { x: 0, y: yy, width: W, height: linha, class: "alvo" });
+    alvo.addEventListener("mousemove", (e) => d.mostrar(
+      `<b>${esc(t.time)}</b>: ${pct(t.chance_queda)} de cair<br>${t.pos_atual}º com ${t.pts_atual} pts hoje · ` +
+      `termina com ${num(t.pontos_finais_media, 1)} pts em média`, e));
+    alvo.addEventListener("mouseleave", () => d.esconder());
+    svg.appendChild(alvo);
+  });
+  container.prepend(svg);
+}
+
+// perspectiva de um time num jogo: chance de vencer, empatar e perder
+function doPontoDeVista(j, time) {
+  const casa = j.mandante === time;
+  return { casa, adversario: casa ? j.visitante : j.mandante,
+           vence: casa ? j.p_mandante : j.p_visitante, empate: j.p_empate, perde: casa ? j.p_visitante : j.p_mandante };
+}
+
+function secaoResposta(p) {
+  const r = p.resposta;
+  const n = r.pontos_para_menos_de_5pct;
+  const j = r.proximo_jogo;
+  const v = doPontoDeVista(j, r.time);
+  const dataDados = new Date(`${p.dados.ate}T12:00:00`).toLocaleDateString("pt-BR");
+  const ufmg = p.checagens["4_diferenca_ufmg"];
+  const linhasTabela = r.distribuicao_posicao.map((x, i) => `<tr><td>${i + 1}º</td><td>${pct(x)}</td></tr>`).join("");
+  const partes = [
+    { valor: v.vence, cor: "--serie", rotulo: `${r.time} vence` },
+    { valor: v.empate, cor: "--neutro", rotulo: "Empate" },
+    { valor: v.perde, cor: "--derrota", rotulo: `${v.adversario} vence` },
+  ];
+
+  const secao = document.getElementById("resposta");
+  secao.innerHTML = `
+    <h2>A resposta: o Corinthians vai cair?</h2>
+    <div class="heroi">
+      <div>
+        <p class="rotulo">Chance de o ${esc(r.time)} terminar entre o 17º e o 20º lugar</p>
+        <p class="numero" id="numero-queda">${pct(r.chance_queda)}</p>
+        <p class="comparacao">UFMG: ${pct(ufmg.ufmg)} · diferença de ${num(ufmg.diferenca_pp, 1)} pontos percentuais</p>
+        <p class="comparacao">Hoje: ${r.pos_atual}º, com ${r.pts_atual} pontos · dados até ${dataDados} (${p.dados.rodada}ª rodada) ·
+          ${num(p.simulacoes)} temporadas simuladas</p>
+      </div>
+      <div>
+        <p class="rotulo">Quantos pontos faltam</p>
+        <p class="numero-medio">${n.faltam === null ? "—" : `${n.faltam} pontos`}</p>
+        <p class="comparacao">Terminando com ${n.pontos_finais} pontos, a chance de cair fica abaixo de 5%.
+          Faltam ${r.jogos_restantes.length} jogos (${3 * r.jogos_restantes.length} pontos em disputa).</p>
+      </div>
+      <div>
+        <p class="rotulo">Próximo jogo · ${dataCurta(j.data)}</p>
+        <p class="numero-medio" style="font-size:1.25rem">${esc(j.mandante)} x ${esc(j.visitante)}</p>
+        ${barra3(partes, "fina")}
+        ${legenda(partes.map((x) => ({ ...x, rotulo: `${x.rotulo} ${pct(x.valor, 0)}` })))}
+        <p class="comparacao">Placar mais provável: ${j.placar_mais_provavel.join(" x ")} · gols esperados
+          ${j.gols_esperados.map((g) => num(g, 2)).join(" x ")}${j.equilibrado ? " · jogo equilibrado" : ""}</p>
+      </div>
+    </div>
+    <h3>Em que posição o ${esc(r.time)} termina (* = posição hoje)</h3>
+    <div class="grafico" id="g-posicoes">
+      <details><summary>Ver em tabela</summary><div class="tabela"><table><thead><tr><th>Posição</th><th>Chance</th></tr></thead>
+        <tbody>${linhasTabela}</tbody></table></div></details>
+    </div>
+    <h3>Chance de queda dos times ameaçados</h3>
+    <div class="grafico" id="g-queda"></div>`;
+  contar(document.getElementById("numero-queda"), r.chance_queda, (x) => pct(x));
+
+  const desenhar = () => {
+    secao.querySelectorAll(".grafico svg, .grafico .dica").forEach((no) => no.remove());
+    graficoPosicoes(document.getElementById("g-posicoes"), r.distribuicao_posicao, r.chance_queda, r.pos_atual);
+    graficoQueda(document.getElementById("g-queda"), p.times, r.time);
+  };
+  desenhar();
+  setTimeout(() => secao.classList.remove("anima"), 2000);  // redesenhos depois disso não animam de novo
+  let largura = document.getElementById("g-queda").clientWidth;
+  new ResizeObserver(() => {
+    const nova = document.getElementById("g-queda").clientWidth;
+    if (nova !== largura) { largura = nova; desenhar(); }
+  }).observe(document.getElementById("g-queda"));
+}
+
+// ---------- 2. Jogos restantes do Corinthians ----------
+
+// "vitória por 1 x 0", "empate em 1 x 1", "derrota por 2 x 0": sempre com os gols do vencedor primeiro
+function placarFrase(j, v) {
+  const [m, vis] = j.placar_mais_provavel;
+  const [nosso, deles] = v.casa ? [m, vis] : [vis, m];
+  if (nosso > deles) return `vitória por ${nosso} x ${deles}`;
+  if (nosso === deles) return `empate em ${nosso} x ${deles}`;
+  return `derrota por ${deles} x ${nosso}`;
+}
+
+function secaoJogosCorinthians(p) {
+  const r = p.resposta;
+  const jogos = r.jogos_restantes.map((j) => ({ j, v: doPontoDeVista(j, r.time) }));
+  const esperados = jogos.reduce((s, { v }) => s + 3 * v.vence + v.empate, 0);
+  const necessario = r.pontos_para_menos_de_5pct.faltam;
+  const cores = [{ cor: "--serie", rotulo: `${r.time} vence` }, { cor: "--neutro", rotulo: "Empate" }, { cor: "--derrota", rotulo: "Adversário vence" }];
+
+  const secao = document.getElementById("jogos-cor");
+  secao.hidden = false;
+  secao.innerHTML = `
+    <h2>Os ${jogos.length} jogos que faltam</h2>
+    <p class="resumo-jogos">Somando os ${jogos.length} jogos, o modelo espera <b>${num(esperados, 1)} pontos</b> para o ${esc(r.time)}.
+      Para a chance de cair ficar abaixo de 5%, ele precisa de <b>${necessario}</b>.</p>
+    ${legenda(cores)}
+    <ol class="jogos">${jogos.map(({ j, v }, i) => `
+      <li class="jogo" style="animation-delay:${i * 50}ms">
+        <div class="quando"><b>${dataCurta(j.data)}</b>${j.rodada}ª rod.</div>
+        <div class="titulo">${esc(v.adversario)} <small>${v.casa ? "em casa" : "fora"}</small>${j.equilibrado ? '<span class="selo">jogo equilibrado</span>' : ""}</div>
+        <div class="placar">placar provável<b>${placarFrase(j, v)}</b></div>
+        ${barra3([{ valor: v.vence, cor: "--serie", rotulo: `${r.time} vence` }, { valor: v.empate, cor: "--neutro", rotulo: "Empate" },
+                  { valor: v.perde, cor: "--derrota", rotulo: `${v.adversario} vence` }])}
+      </li>`).join("")}
+    </ol>`;
+  setTimeout(() => secao.classList.remove("anima"), 2000);
+}
+
+// ---------- 3. Tabela do Brasileirão ----------
+
+function secaoTabela(f, p) {
+  const queda = Object.fromEntries((p?.times ?? []).map((t) => [t.time, t.chance_queda]));
+  const nomes = { Mineiro: "Atlético-MG", Paranaense: "Athletico-PR", "Vasco da Gama": "Vasco", "Clube do Remo": "Remo" };
+  const nome = (t) => nomes[t] ?? t;
+  const secao = document.getElementById("tabela");
+  secao.hidden = false;
+  secao.innerHTML = `
+    <h2>Tabela do Brasileirão após a ${f.temporada.rodada_atual}ª rodada</h2>
+    ${tabela([
+      ["#", (l) => l.pos], ["Time", (l) => nome(l.time), true], ["P", (l) => l.pts], ["J", (l) => l.j],
+      ["V", (l) => l.v], ["E", (l) => l.e], ["D", (l) => l.d], ["GP", (l) => l.gp], ["GC", (l) => l.gc], ["SG", (l) => l.sg],
+      ["Chance de cair", (l) => (nome(l.time) in queda ? pct(queda[nome(l.time)]) : "—")],
+    ], f.classificacao, (l) => (l.time === f.corinthians.linha.time ? "cor" : l.pos >= 17 ? "z4" : ""))}
+    <p class="msg">Fonte: football-data.org. A tabela montada a partir dos resultados confere com a oficial nos 20 times.</p>`;
+}
+
+// ---------- 4. Os dados em um olhar ----------
+
+function mapaCobertura(container, c) {
+  const anos = c.anos;
+  const linhas = Object.entries(c.linhas);
+  container.style.setProperty("--anos", anos.length);
+  const marcos = new Set([anos[0].temporada, 2010, 2015, 2020, anos.at(-1).temporada]);
+  let html = "";
+  linhas.forEach(([chave, rotulo], li) => {
+    html += `<div class="nome">${esc(rotulo)}</div>`;
+    anos.forEach((a, ai) => {
+      const cel = a[chave];
+      const classe = cel.pct >= 90 ? "completo" : cel.pct > 0 ? "parcial" : "";
+      html += `<div class="celula ${classe}" style="animation-delay:${(ai + li * 3) * 15}ms" data-dica="${esc(
+        `<b>${a.temporada} · ${rotulo}</b><br>${cel.pct > 0 ? `${num(cel.pct, 0)}% dos jogos (${num(cel.jogos)} de ${num(cel.total)})<br>Fonte: ${cel.fonte}` : "sem dado"}`)}"></div>`;
+    });
+  });
+  html += `<div></div>${anos.map((a) => `<div class="ano">${marcos.has(a.temporada) ? `’${String(a.temporada).slice(2)}` : ""}</div>`).join("")}`;
+  container.innerHTML = html;
+  const d = dica(container);
+  container.addEventListener("mousemove", (e) => {
+    const alvo = e.target.closest(".celula");
+    if (alvo) d.mostrar(alvo.dataset.dica, e); else d.esconder();
+  });
+  container.addEventListener("mouseleave", () => d.esconder());
+}
+
+function secaoDados(d, p) {
+  const secao = document.getElementById("dados");
+  secao.hidden = false;
+  const conf = d.conferencia?.status === "ok" ? d.conferencia : null;
+  const api = d.fontes.api_football;
+  const fontes = [
+    ["football-data.org", d.fontes.football_data.status, "2026 oficial"],
+    ["football-data.co.uk", conf ? "ok" : "erro", "2025 e conferência"],
+    ["Dataset histórico", d.fontes.historico.status, "2003–2024"],
+    ["API-Football", api.status, api.status === "ok" ? `plano ${api.conta.plano}` : ""],
+  ];
+  secao.innerHTML = `
+    <h2>Os dados em um olhar</h2>
+    <div class="numeros">
+      <div><p class="rotulo">Jogos na base</p><p class="valor" data-contar="${p?.dados.jogos_no_treino ?? 0}">—</p><p class="msg">de 2003 a 20/09/2026</p></div>
+      <div><p class="rotulo">Jogos conferidos entre fontes</p><p class="valor" data-contar="${conf?.jogos_conferidos ?? 0}">—</p>
+        <p class="msg">${conf ? (conf.confere ? "nenhuma diferença ✅" : `❌ ${conf.diferencas} diferenças`) : "conferência não rodada"}</p></div>
+      <div><p class="rotulo">Temporadas simuladas</p><p class="valor" data-contar="${p?.simulacoes ?? 0}">—</p><p class="msg">Monte Carlo, com o desempate do regulamento</p></div>
+    </div>
+    <div class="pilulas" style="margin:12px 0 4px">${fontes.map(([nome, st, obs]) =>
+      `<span class="pilula">${st === "ok" ? "✅" : st === "sem_chave" ? "⏳" : "❌"} ${esc(nome)}${obs ? ` · ${esc(obs)}` : ""}</span>`).join("")}</div>
+    <h3>Que dado temos em cada temporada</h3>
+    <div class="mapa" id="mapa"></div>
+    <div class="legenda3" style="margin-top:10px">
+      <div><span class="chave" style="background:var(--serie)"></span>completo (90% dos jogos ou mais)</div>
+      <div><span class="chave" style="background:var(--parcial)"></span>parcial</div>
+      <div><span class="chave" style="background:var(--vazio);outline:1px solid var(--borda)"></span>sem dado</div>
+    </div>
+    <p class="msg">Passe o dedo ou o mouse numa célula para ver a fonte e quantos jogos têm o dado.
+      ${p ? `Previsão: ${esc(p.modelo.nome)}. Portão 2 (prova em 2026): log-loss ${num(p.modelo.portao2.log_loss_2026_combinacao, 4)}
+      contra ${num(p.modelo.portao2.log_loss_2026_modelo1, 4)} do Modelo 1 sozinho (menor é melhor) ·
+      checagens: ${Object.values(p.checagens).every((c) => c.aprovada) ? "✅ 4 de 4 aprovadas" : "❌ alguma reprovada"}.` : ""}</p>
+    <details><summary>Ver detalhes das fontes (auditoria)</summary><div id="auditoria"></div></details>`;
+  if (d.cobertura?.status === "ok") mapaCobertura(document.getElementById("mapa"), d.cobertura);
+  else document.getElementById("mapa").outerHTML = `<p class="msg">❌ Mapa indisponível: ${esc(d.cobertura?.mensagem)}</p>`;
+  secao.querySelectorAll("[data-contar]").forEach((e) => contar(e, Number(e.dataset.contar), (x) => num(Math.round(x))));
+  document.getElementById("auditoria").innerHTML = auditoria(d);
+  setTimeout(() => secao.classList.remove("anima"), 2500);
+}
+
+function auditoria(d) {
+  const partes = [];
+  const f = d.fontes.football_data;
+  if (f.status === "ok") partes.push(`
+    <h3>football-data.org</h3>
+    <dl>
+      <dt>Temporada</dt><dd>${esc(f.temporada.inicio)} a ${esc(f.temporada.fim)} · rodada atual ${esc(f.temporada.rodada_atual)}</dd>
+      <dt>Partidas</dt><dd>${esc(f.partidas.total)} no total · ${esc(f.partidas.restantes)} restantes</dd>
+      <dt>Por status</dt><dd>${Object.entries(f.partidas.por_status).map(([s, n]) => `${esc(s)}: ${esc(n)}`).join(" · ")}</dd>
+    </dl>`);
+  const a = d.fontes.api_football;
+  if (a.status === "ok") partes.push(`
+    <h3>API-Football</h3>
+    <dl>
+      <dt>Plano</dt><dd>${esc(a.conta.plano)} · ${esc(a.conta.chamadas_hoje)} de ${esc(a.conta.limite_dia)} chamadas hoje</dd>
+      ${Object.entries(a.testes).map(([ano, t]) => `<dt>Teste ${esc(ano)}</dt><dd>${t.status !== "ok" ? `❌ ${esc(t.mensagem)}`
+        : `${esc(t.partidas)} jogos · no alvo ${sim(t.tem_no_alvo)} · dentro da área ${sim(t.tem_dentro_da_area)} · xG ${sim(t.tem_xg)}`}</dd>`).join("")}
+    </dl>`);
+  const h = d.fontes.historico;
+  if (h.status === "ok") partes.push(`
+    <h3>Dataset histórico</h3>
+    <dl>
+      <dt>Período</dt><dd>${esc(h.periodo)}</dd>
+      <dt>Linhas</dt><dd>${Object.entries(h.linhas).map(([k, v]) => `${esc(k)}: ${esc(v.toLocaleString("pt-BR"))}`).join(" · ")}</dd>
+      <dt>Temporadas com buraco</dt><dd>${h.temporadas_com_buraco.length ? esc(h.temporadas_com_buraco.join(", ")) : "nenhuma ✅"}</dd>
+    </dl>`);
+  return partes.join("") || '<p class="vazio">Nada a mostrar.</p>';
+}
+
+// ---------- 5. Rodada da volta (recolhida) ----------
+
+function secaoRodadaVolta(p) {
+  const jogos = p.jogos.filter((j) => j.rodada <= p.dados.rodada + 1)
+    .sort((a, b) => (a.data ?? "9999").localeCompare(b.data ?? "9999"));
+  const cores = [{ cor: "--serie", rotulo: "Mandante vence" }, { cor: "--neutro", rotulo: "Empate" }, { cor: "--serie-2", rotulo: "Visitante vence" }];
+  const secao = document.getElementById("rodada-volta");
+  secao.hidden = false;
+  secao.innerHTML = `
+    <details class="bloco">
+      <summary>Rodada da volta: previsão dos ${jogos.length} jogos (atrasados e 29ª rodada)</summary>
+      ${legenda(cores)}
+      <ol class="jogos">${jogos.map((j) => `
+        <li class="jogo">
+          <div class="quando"><b>${dataCurta(j.data)}</b>${j.rodada}ª rod.</div>
+          <div class="titulo">${esc(j.mandante)} x ${esc(j.visitante)}${j.equilibrado ? '<span class="selo">jogo equilibrado</span>' : ""}</div>
+          <div class="placar">placar provável<b>${j.placar_mais_provavel.join(" x ")}</b></div>
+          ${barra3([{ valor: j.p_mandante, cor: "--serie", rotulo: `${j.mandante} vence` }, { valor: j.p_empate, cor: "--neutro", rotulo: "Empate" },
+                    { valor: j.p_visitante, cor: "--serie-2", rotulo: `${j.visitante} vence` }])}
+        </li>`).join("")}
+      </ol>
+      <p class="msg">Jogos da ${p.dados.rodada + 1}ª rodada e das rodadas anteriores que ainda não foram disputados. "Sem data": jogo adiado, ainda sem nova data.</p>
+    </details>`;
+}
+
+// ---------- carga ----------
+
+const carregar = (url) => fetch(url, { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+
+Promise.allSettled([carregar("../../data/processed/diagnostico.json"), carregar("../../data/processed/previsao.json")])
+  .then(([rd, rp]) => {
+    const d = rd.status === "fulfilled" ? rd.value : null;
+    const p = rp.status === "fulfilled" ? rp.value : null;
+    if (d) {
+      document.getElementById("sub").textContent =
+        `Página interna, fora do site publicado. Diagnóstico gerado em ${new Date(d.gerado_em).toLocaleString("pt-BR")} · congelamento após a ${d.rodada_congelamento}ª rodada.`;
+    }
+    if (p) {
+      secaoResposta(p);
+      secaoJogosCorinthians(p);
+    } else {
+      document.getElementById("resposta").innerHTML =
+        `<p class="status erro">❌ Previsão ainda não gerada</p><p class="msg">Rode <code>python -m src.simulate.previsao</code> e recarregue.</p>`;
+    }
+    if (d?.fontes.football_data.status === "ok") secaoTabela(d.fontes.football_data, p);
+    if (d) secaoDados(d, p);
+    else document.getElementById("sub").textContent += " Diagnóstico não encontrado: rode python -m src.diagnostico.";
+    if (p) secaoRodadaVolta(p);
+  });
+</script>
+</body>
+</html>
