@@ -198,6 +198,12 @@ class Pontos {
     ordem.forEach((p, k) => { this.posto[p] = k; });
     this.atraso = Float32Array.from({ length: total }, () => aleatorio());
     this.medir();
+    // janela redimensionada ou zoom trocado: refaz a grade na nova largura
+    let largura = canvas.parentElement.clientWidth;
+    new ResizeObserver(() => {
+      const nova = canvas.parentElement.clientWidth;
+      if (nova !== largura) { largura = nova; this.medir(); }
+    }).observe(canvas.parentElement);
   }
 
   medir() {
@@ -205,18 +211,22 @@ class Pontos {
     this.colunas = largura >= 600 ? 50 : 40;
     this.linhas = Math.ceil(this.total / this.colunas);
     this.celula = largura / this.colunas;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    // zoom abaixo de 100% dá densidade menor que 1: desenha com pelo menos 1, para os pontos saírem nítidos
+    const dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
     this.canvas.width = Math.round(largura * dpr);
     this.canvas.height = Math.round(this.linhas * this.celula * dpr);
     this.canvas.style.height = `${this.linhas * this.celula}px`;
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.dpr = dpr;
     this.desenhar();
   }
 
   desenhar() {
     const { ctx, celula } = this;
     const vermelho = cor("--perde");
+    // limpa em pixels reais, sem a escala: com escala menor que 1 sobrava rastro nas bordas
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     const raio = celula * 0.3;
     for (let i = 0; i < this.total; i++) {
       const lin = Math.floor(i / this.colunas), col = i % this.colunas;
