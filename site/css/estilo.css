@@ -203,3 +203,7 @@ footer .marca-rodape img { width: 24px; height: 30px; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* página "não encontrada" (404.html) */
+.pagina-404 { margin-top: 32px; }
+.pagina-404 .botao { display: inline-block; text-decoration: none; }

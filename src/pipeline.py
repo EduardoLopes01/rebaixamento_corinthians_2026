@@ -13,7 +13,7 @@ from src import diagnostico
 from src.features import variaveis
 from src.ingest import consolidar
 from src.models import dixon_coles, ensemble
-from src.publish import site
+from src.publish import previa, site
 from src.simulate import previsao, sensibilidade
 
 ETAPAS = [
@@ -25,6 +25,7 @@ ETAPAS = [
     ("Sensibilidade: outras escolhas de modelo", sensibilidade.main),
     ("Diagnóstico e cobertura dos dados", diagnostico.main),
     ("JSON do site (só agregados)", site.main),
+    ("Imagem de prévia para redes sociais (precisa do Edge)", previa.main),
 ]
 
 
