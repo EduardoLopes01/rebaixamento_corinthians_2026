@@ -1,11 +1,13 @@
 # Vai cair? A chance do Corinthians ser rebaixado no Brasileirão 2026
 
+**Veja o site: [rebaixamentocorinthians.com.br](https://rebaixamentocorinthians.com.br)**
+
 Na pausa da Data Fifa, o Corinthians estava em **14º lugar, com 32 pontos**, três acima da zona de rebaixamento.
 Este projeto responde a pergunta que todo corintiano fez: **vai cair?**
 
 > ### 24,1%: o Corinthians cai em 1 de cada 4 temporadas simuladas
 > Previsão feita uma única vez, com os jogos até a 28ª rodada (20/09/2026),
-> e registrada aqui antes da bola voltar a rolar. **Não é recomendação de aposta.**
+> e registrada em [`predictions/2026-09-26_pausa.json`](predictions/2026-09-26_pausa.json) antes da bola voltar a rolar. **Não é recomendação de aposta.**
 
 Site independente, feito para estudo e sem fins comerciais, sem vínculo com o Sport Club Corinthians Paulista.
 Projeto de produto de dados feito com IA: o autor decide e revisa; o Claude Code escreve e executa.
@@ -112,8 +114,9 @@ npm run site                # abre o site em http://localhost:8000
 ```
 
 O pipeline roda, na ordem: consolidação das fontes, backtest do Modelo 1 (Dixon-Coles), variáveis e backtest
-do Modelo 2 (XGBoost) com o Portão 2, previsão com 100 mil temporadas e as checagens, sensibilidade, diagnóstico
-e o JSON do site. Página interna de conferência dos dados: `npm run validacao` e http://localhost:8001/dev/validacao/.
+do Modelo 2 (XGBoost) com o Portão 2, previsão com 100 mil temporadas e as checagens, sensibilidade, diagnóstico,
+o JSON do site e a imagem de prévia para redes sociais. O snapshot da previsão (`python -m src.publish.registro`)
+foi gravado uma única vez e nunca é refeito. Página interna de conferência dos dados: `npm run validacao` e http://localhost:8001/dev/validacao/.
 
 | Pasta | Conteúdo |
 |---|---|
