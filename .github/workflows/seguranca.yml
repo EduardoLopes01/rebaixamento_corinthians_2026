@@ -38,8 +38,9 @@ jobs:
       - name: Semgrep (JavaScript, HTML, Python e segredos)
         run: semgrep scan --metrics=off --error --config p/javascript --config p/xss --config p/secrets --config p/python --config p/security-audit --exclude site/vendor --exclude node_modules .
       - name: detect-secrets (segredos nos arquivos)
+        # o SHA-256 público do arquivo do site, gravado no snapshot da previsão, não é segredo (e o snapshot nunca muda)
         run: |
-          git ls-files -z | xargs -0 detect-secrets scan > resultado.json
+          git ls-files -z | xargs -0 detect-secrets scan --exclude-secrets '^5018a9e20b426366d79dffb2a36690173640019dc9e7ffd940c2610e6cf3e4c9$' > resultado.json
           python -c "import json,sys; r=json.load(open('resultado.json'))['results']; print(r or 'nenhum segredo'); sys.exit(1 if r else 0)"
       - name: Sintaxe do JavaScript do site
         run: for f in site/js/*.js; do node --check "$f"; done
