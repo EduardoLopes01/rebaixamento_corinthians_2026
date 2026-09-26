@@ -8,16 +8,16 @@ import pytest
 
 from src.config import DATA_PROCESSED, RAIZ, SITE_DATA
 
-TOLERANCIA = 0.015  # 1,5 ponto percentual: as duas simulações são sorteios independentes
+TOLERANCIA = 0.01  # 1 ponto percentual: as duas simulações (100 mil temporadas cada) são sorteios independentes
 
 SCRIPT = """
 import { readFileSync } from "node:fs";
-import { simular } from "./site/js/simulador.js";
+import { simular, simularEmPartes } from "./site/js/simulador.js";
 const dados = JSON.parse(readFileSync("site/data/previsao.json", "utf-8"));
 const cor = dados.jogos.map((j, g) => [j, g]).filter(([j]) => [j.mandante, j.visitante].includes("Corinthians"));
 const vitorias = Object.fromEntries(cor.map(([j, g]) => [g, j.mandante === "Corinthians" ? 0 : 2]));
 const inicio = performance.now();
-const livre = simular(dados, {}, 20000);
+const livre = simularEmPartes(dados, {});  // o mesmo cálculo do site, em 8 partes de 12.500
 const ms = performance.now() - inicio;
 const tudoVitoria = simular(dados, vitorias, 5000);
 console.log(JSON.stringify({ times: livre.times, chance: livre.chanceQueda, ms,
@@ -51,4 +51,4 @@ def test_js_corinthians_vencendo_tudo_nao_cai(resultado_js):
 
 
 def test_js_rapido(resultado_js):
-    assert resultado_js["ms"] < 3000  # 20 mil temporadas; no site usamos 10 mil
+    assert resultado_js["ms"] < 6000  # 100 mil temporadas em sequência; no site as partes rodam em paralelo, em Workers

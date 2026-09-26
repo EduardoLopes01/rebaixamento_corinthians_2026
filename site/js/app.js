@@ -1,7 +1,8 @@
 // Vai cair? — lê data/previsao.json e monta a página. Animações com Motion (motion.dev, em site/vendor).
-import { simular } from "./simulador.js";
+import { N_NAVEGADOR, PARTES, sementeDaParte, simularEmPartes } from "./simulador.js";
 
 const TIME = "Corinthians";
+const PRIMEIRA_TEMPORADA = 2003;  // início da base histórica (Brasileirão Dataset)
 const M = window.Motion;  // carregado antes deste módulo (script com defer)
 const MOVIMENTO = Boolean(M) && !matchMedia("(prefers-reduced-motion: reduce)").matches;
 const SVG = "http://www.w3.org/2000/svg";
@@ -101,6 +102,66 @@ function placarFrase(j, v) {
 }
 // resultado do ponto de vista do Corinthians ("v", "e", "d") → do ponto de vista do mandante (0, 1, 2)
 const paraMandante = (jogo, r) => (r === "e" ? 1 : (r === "v") === (jogo.mandante === TIME) ? 0 : 2);
+
+// Calcula a chance de queda do Corinthians num cenário: 100 mil temporadas, divididas em PARTES que rodam em
+// paralelo em Workers (um por núcleo livre do aparelho), fora da tela principal. Cada canal ("simulador",
+// "chip-v"...) guarda só o pedido mais recente: um pedido novo cancela o anterior, que recebe null.
+// Sem Worker (navegador antigo ou bloqueado), calcula aqui mesmo.
+function criarCalculo(dados) {
+  const trabalhadores = [], livres = [], fila = [];
+  const pedidos = new Map();  // canal → { id, soma, faltam, fixos, resolver }
+  let proximoId = 0, semWorker = false;
+  const aqui = (fixos) => { const r = simularEmPartes(dados, fixos); return r.chanceQueda[r.times.indexOf(TIME)]; };
+
+  const despachar = () => {
+    while (livres.length && fila.length) {
+      const tarefa = fila.shift();
+      if (pedidos.get(tarefa.canal)?.id !== tarefa.id) continue;  // pedido já cancelado
+      const w = livres.pop();
+      w.tarefa = tarefa;
+      w.postMessage({ fixos: tarefa.fixos, n: N_NAVEGADOR / PARTES, semente: sementeDaParte(tarefa.parte), time: TIME });
+    }
+  };
+  const desistir = () => {
+    if (semWorker) return;
+    semWorker = true;
+    trabalhadores.forEach((w) => w.terminate());
+    fila.length = 0;
+    for (const [canal, p] of pedidos) { pedidos.delete(canal); p.resolver(aqui(p.fixos)); }
+  };
+
+  try {
+    const nucleos = Math.max(1, Math.min(PARTES, (navigator.hardwareConcurrency || 2) - 1));
+    for (let i = 0; i < nucleos; i++) {
+      const w = new Worker(new URL("./calculo.js", import.meta.url), { type: "module" });
+      w.onmessage = ({ data: chance }) => {
+        const t = w.tarefa;
+        w.tarefa = null;
+        livres.push(w);
+        const p = pedidos.get(t.canal);
+        if (p?.id === t.id) {
+          p.soma += chance;
+          if (--p.faltam === 0) { pedidos.delete(t.canal); p.resolver(p.soma / PARTES); }
+        }
+        despachar();
+      };
+      w.onerror = desistir;
+      w.postMessage({ dados });
+      trabalhadores.push(w);
+      livres.push(w);
+    }
+  } catch { desistir(); }
+
+  return (fixos, canal) => new Promise((resolver) => {
+    if (semWorker) { resolver(aqui(fixos)); return; }
+    pedidos.get(canal)?.resolver(null);
+    const id = ++proximoId;
+    pedidos.set(canal, { id, soma: 0, faltam: PARTES, fixos, resolver });
+    for (let parte = 0; parte < PARTES; parte++) fila.push({ id, canal, parte, fixos });
+    despachar();
+  });
+}
+const milTemporadas = (n) => `${num(n / 1000)} mil temporadas simuladas`;
 
 // ---------- faixa de validade: muda sozinha em 07/10, pelo horário de Brasília ----------
 
@@ -251,7 +312,7 @@ function regua(container, dados, chance) {
   };
 }
 
-function heroi(dados) {
+function heroi(dados, calcular) {
   const c = dados.corinthians;
   const proximo = dados.jogos.findIndex((j) => [j.mandante, j.visitante].includes(TIME));
   const jogo = dados.jogos[proximo];
@@ -264,14 +325,18 @@ function heroi(dados) {
     const n = Math.round(chance * 1000);
     // "1 em cada 4": a forma mais fácil de ler uma chance (os pontos mostram a conta exata)
     const umEm = chance >= 0.001 ? `<b>1 em cada ${num(Math.max(1, Math.round(1 / chance)))}</b>` : "<b>menos de 1 em cada 1.000</b>";
+    const das = `das ${milTemporadas(cenario ? N_NAVEGADOR : dados.dados.simulacoes)}`;
     frase.innerHTML = cenario
-      ? `${cenario}, o Corinthians cai em ${umEm} temporadas simuladas.`
-      : `O Corinthians cai em ${umEm} temporadas simuladas.`;
+      ? `${cenario}, o Corinthians cai em ${umEm} ${das}.`
+      : `O Corinthians cai em ${umEm} ${das}.`;
     $("tela-pontos").setAttribute("aria-label", `Mil pontos, cada um valendo 100 das 100 mil temporadas simuladas. ${num(n)} vermelhos: Corinthians rebaixado.`);
   };
 
   // cenários do próximo jogo: calculados no navegador, com o mesmo simulador dos 10 jogos
-  const cache = { modelo: c.chance_queda };
+  // chances já calculadas por cenário; as do próximo jogo são pré-calculadas logo depois da abertura
+  const prontas = { modelo: c.chance_queda }, calculando = {};
+  const preparar = (id) => (calculando[id] ??= calcular({ [proximo]: paraMandante(jogo, id) }, `chip-${id}`)
+    .then((chance) => (prontas[id] = chance)));
   const cenarios = [
     { id: "modelo", rotulo: "Previsão do modelo" },
     { id: "v", rotulo: `Vence o ${adv}` },
@@ -280,6 +345,8 @@ function heroi(dados) {
   ];
   const nomeCenario = { v: `Se vencer o ${esc(adv)}`, e: `Se empatar com o ${esc(adv)}`, d: `Se perder para o ${esc(adv)}` };
   $("chips").innerHTML = cenarios.map((s) => `<button type="button" class="chip" data-c="${s.id}" aria-pressed="${s.id === "modelo"}">${esc(s.rotulo)}</button>`).join("");
+
+  $("base-heroi").textContent = `Base: ${num(dados.dados.jogos_na_base)} jogos do Brasileirão analisados, de ${PRIMEIRA_TEMPORADA} a ${dados.dados.ate.slice(0, 4)}.`;
 
   let fimDoTexto;
   const mostrar = (chance, id) => {
@@ -291,18 +358,18 @@ function heroi(dados) {
     reguaHeroi.mover(chance);
   };
 
-  $("chips").addEventListener("click", (e) => {
+  let escolhido = "modelo";
+  $("chips").addEventListener("click", async (e) => {
     const botao = e.target.closest(".chip");
     if (!botao) return;
     const id = botao.dataset.c;
+    escolhido = id;
     $("chips").querySelectorAll(".chip").forEach((b) => b.setAttribute("aria-pressed", String(b === botao)));
-    requestAnimationFrame(() => {  // deixa o toque responder antes de calcular
-      if (!(id in cache)) {
-        const r = simular(dados, { [proximo]: paraMandante(jogo, id) }, 20000);
-        cache[id] = r.chanceQueda[r.times.indexOf(TIME)];
-      }
-      mostrar(cache[id], id);
-    });
+    if (!(id in prontas)) {
+      frase.textContent = `Simulando ${num(N_NAVEGADOR / 1000)} mil temporadas…`;
+      await preparar(id);
+    }
+    if (id === escolhido) mostrar(prontas[id], id);
   });
 
   escreverFrase(c.chance_queda, null);
@@ -311,9 +378,10 @@ function heroi(dados) {
     mostrar(c.chance_queda, "modelo");
     reguaHeroi.entrar();
     pontos.respirar();
+    ["v", "e", "d"].forEach(preparar);
   });
   if (MOVIMENTO) {
-    M.animate(".sobretitulo, .numero-heroi, .frase-heroi", { opacity: [0, 1], y: [24, 0] }, { duration: 0.8, delay: M.stagger(0.12), ease: SUAVE });
+    M.animate(".sobretitulo, .numero-heroi, .frase-heroi, .base-heroi", { opacity: [0, 1], y: [24, 0] }, { duration: 0.8, delay: M.stagger(0.12), ease: SUAVE });
     M.animate(".legenda-pontos, .chips-rotulo, .chips, .regua, .descer", { opacity: [0, 1], y: [16, 0] }, { duration: 0.6, delay: M.stagger(0.1, { startDelay: 1.6 }), ease: SUAVE });
     // a foto da torcida desce mais devagar que a página (profundidade)
     M.scroll(M.animate("#heroi-foto", { transform: ["translateY(0px) scale(1.06)", "translateY(90px) scale(1.14)"] }, { ease: "linear" }),
@@ -460,7 +528,7 @@ function graficoSensibilidade(container, s) {
 
 // ---------- os 10 jogos e o simulador ----------
 
-function jogosESimulador(dados) {
+function jogosESimulador(dados, calcular) {
   const jogosCor = dados.jogos.map((j, g) => ({ j, g, v: doPontoDeVista(j, TIME) })).filter(({ j }) => [j.mandante, j.visitante].includes(TIME));
   const esperados = jogosCor.reduce((s, { v }) => s + 3 * v.vence + v.empate, 0);
   const n = dados.corinthians.pontos_para_menos_de_5pct;
@@ -502,7 +570,9 @@ function jogosESimulador(dados) {
   }
 
   let chanceAnterior = dados.corinthians.chance_queda;
-  const recalcular = () => {
+  let versao = 0;  // só o último toque vale: resultados atrasados são descartados
+  const recalcular = async () => {
+    const minha = ++versao;
     const fixos = {};
     let pontos = 0;
     for (const [g, r] of Object.entries(escolhas)) {
@@ -514,10 +584,18 @@ function jogosESimulador(dados) {
     const estavaEscondido = painel.classList.contains("escondido");
     painel.classList.toggle("escondido", qtd === 0);
     document.querySelectorAll(".jogo[data-g]").forEach((li) => li.classList.toggle("fixado", li.dataset.g in escolhas));
-    if (!qtd) { chanceAnterior = dados.corinthians.chance_queda; return; }
+    if (!qtd) { chanceAnterior = dados.corinthians.chance_queda; painel.removeAttribute("aria-busy"); return; }
     if (estavaEscondido && MOVIMENTO) M.animate(painel, { y: [80, 0], opacity: [0, 1] }, { type: "spring", bounce: 0.3, duration: 0.6 });
-    const r = simular(dados, fixos, 10000);
-    const chance = r.chanceQueda[r.times.indexOf(TIME)];
+    // o aviso de cálculo só aparece se demorar: em aparelho rápido o número troca direto
+    const aviso = setTimeout(() => {
+      if (minha !== versao) return;
+      painel.setAttribute("aria-busy", "true");
+      $("cenario-texto").textContent = `Simulando ${num(N_NAVEGADOR / 1000)} mil temporadas…`;
+    }, 150);
+    const chance = await calcular(fixos, "simulador");
+    clearTimeout(aviso);
+    if (chance === null || minha !== versao) return;
+    painel.removeAttribute("aria-busy");
     contar($("cenario-chance"), chanceAnterior, chance, (x) => pct(x), { duration: 0.6 });
     chanceAnterior = chance;
     const delta = 100 * (chance - dados.corinthians.chance_queda);
@@ -532,7 +610,7 @@ function jogosESimulador(dados) {
     const g = li.dataset.g, r = botao.dataset.r;
     if (escolhas[g] === r) delete escolhas[g]; else escolhas[g] = r;
     li.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(escolhas[g] === b.dataset.r)));
-    requestAnimationFrame(recalcular);
+    recalcular();
   });
   $("cenario-limpar").addEventListener("click", () => {
     for (const g of Object.keys(escolhas)) delete escolhas[g];
@@ -600,7 +678,7 @@ function osDados(dados) {
   $("dados").innerHTML = `
     <h2>Os dados</h2>
     <div class="resumo-dados">
-      <div><p class="rotulo">Jogos analisados</p><p class="valor" data-contar="${dados.dados.jogos_na_base}">${num(dados.dados.jogos_na_base)}</p><p class="pequeno suave">de 2003 a 2026</p></div>
+      <div><p class="rotulo">Jogos analisados</p><p class="valor" data-contar="${dados.dados.jogos_na_base}">${num(dados.dados.jogos_na_base)}</p><p class="pequeno suave">de ${PRIMEIRA_TEMPORADA} a ${dados.dados.ate.slice(0, 4)}</p></div>
       <div><p class="rotulo">Temporadas simuladas</p><p class="valor" data-contar="${dados.dados.simulacoes}">${num(dados.dados.simulacoes)}</p><p class="pequeno suave">para cada chance</p></div>
       <div><p class="rotulo">Dados até</p><p class="valor">${dataCurta(dados.dados.ate)}</p><p class="pequeno suave">${dados.dados.rodada}ª rodada</p></div>
     </div>
@@ -731,10 +809,11 @@ async function iniciar() {
     return;
   }
   faixaDeValidade(dados);
-  heroi(dados);
+  const calcular = criarCalculo(dados);  // Workers prontos antes do primeiro toque
+  heroi(dados, calcular);
   faltam(dados);
   proximo(dados);
-  jogosESimulador(dados);
+  jogosESimulador(dados, calcular);
   rodadaVolta(dados);
   osDados(dados);
   $("posicao-sub").textContent = `Chance de cada posição final, em ${num(dados.dados.simulacoes)} temporadas simuladas. * = posição hoje.`;

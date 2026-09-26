@@ -1,8 +1,9 @@
 # Cabeçalhos de segurança do Cloudflare Pages (https://developers.cloudflare.com/pages/configuration/headers/)
 # Scripts só do próprio domínio e do Cloudflare Web Analytics. Nada de eval, iframes, formulários ou plugins.
+# worker-src 'self': o simulador roda num Worker do próprio site (js/calculo.js).
 # 'unsafe-inline' só em style-src: a página usa atributos style="" (larguras das barras); scripts continuam bloqueados.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
