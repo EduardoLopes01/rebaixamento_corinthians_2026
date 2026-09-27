@@ -1,12 +1,20 @@
 # Avisa e propõe atualização quando uma dependência tiver falha de segurança conhecida.
+# cooldown: versões novas só são propostas depois de 7 dias no ar (pacote adulterado costuma ser
+# descoberto antes disso). Correções de segurança não esperam.
 version: 2
 updates:
   - package-ecosystem: "pip"
     directory: "/"
     schedule: { interval: "weekly" }
+    cooldown:
+      default-days: 7
   - package-ecosystem: "npm"
     directory: "/"
     schedule: { interval: "weekly" }
+    cooldown:
+      default-days: 7
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule: { interval: "weekly" }
+    cooldown:
+      default-days: 7
