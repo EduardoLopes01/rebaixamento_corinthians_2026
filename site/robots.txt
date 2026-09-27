@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://rebaixamentocorinthians.com.br/sitemap.xml
