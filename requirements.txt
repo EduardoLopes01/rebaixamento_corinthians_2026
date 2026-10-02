@@ -18,5 +18,5 @@ pillow==12.3.0
 
 # Desenvolvimento
 pytest==9.1.1
-ruff==0.16.8
+ruff==0.16.9
 ipykernel==7.3.0
