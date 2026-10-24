@@ -14,7 +14,7 @@ tzdata==2026.4
 
 # Imagens e gráficos (imagem de prévia)
 matplotlib==3.11.2
-pillow==12.3.0
+pillow==13.0.0
 
 # Desenvolvimento
 pytest==9.1.1
